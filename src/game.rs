@@ -1,7 +1,7 @@
-use rand::Rng;
+static EMPTY_CELL: Cell = Cell {state: false, history: 0};
 
 #[derive(Default, Clone, Debug)]
-struct Cell {
+pub struct Cell {
     state: bool,
     history: u32,
 }
@@ -31,6 +31,10 @@ impl Cell {
         self.history += past_state * 2_u32.pow(32);
         self.state = past_state != 0;
     }
+
+    pub fn get_state(&self) -> bool {
+        self.state
+    }
 }
 
 impl Game {
@@ -39,7 +43,7 @@ impl Game {
             width,
             height,
             // two more rows and columns as const 0 boundaries
-            board: vec![vec![Cell::default(); width + 2]; height + 2],
+            board: vec![vec![Cell::default(); width]; height],
             alive: 0,
         };
         if random {
@@ -49,40 +53,38 @@ impl Game {
     }
 
     pub fn randomize(&mut self) {
-        let mut rng = rand::thread_rng();
         self.alive = 0;
-        for i in 1..self.height - 1 {
-            for j in 1..self.width - 1 {
-                let cell = &mut self.board[i][j];
-                cell.state = rng.gen_range(0..=1) != 0;
-                cell.history = 0;
-                self.alive += cell.state as u32;
+        for i in 0..self.height {
+            for j in 0..self.width {
+                let state = rand::random();
+                self.set_cell(i as i32, j as i32, state);
+                self.alive += state as u32;
             }
         }
     }
 
-    fn count_living(&self, i: usize, j: usize) -> i32 {
+    fn count_living(&self, i: i32, j: i32) -> i32 {
         let mut living = 0;
 
         // for loop would be messier; the up-left cells are already
         // in a new state, so their history is used instead
-        living += self.board[i - 1][j - 1].watch_history(1) as i32;
-        living += self.board[i - 1][j + 1].watch_history(1) as i32;
-        living += self.board[i - 1][j].watch_history(1) as i32;
-        living += self.board[i][j - 1].watch_history(1) as i32;
+        living += self.get_cell(i - 1, j - 1).watch_history(1) as i32;
+        living += self.get_cell(i - 1, j + 1).watch_history(1) as i32;
+        living += self.get_cell(i - 1, j).watch_history(1) as i32;
+        living += self.get_cell(i, j - 1).watch_history(1) as i32;
 
-        living += self.board[i][j + 1].state as i32;
-        living += self.board[i + 1][j].state as i32;
-        living += self.board[i + 1][j - 1].state as i32;
-        living += self.board[i + 1][j + 1].state as i32;
+        living += self.get_cell(i, j + 1).state as i32;
+        living += self.get_cell(i + 1, j).state as i32;
+        living += self.get_cell(i + 1, j - 1).state as i32;
+        living += self.get_cell(i + 1, j + 1).state as i32;
 
         living
     }
 
     pub fn next_generation(&mut self) {
-        for i in 1..self.height - 1 {
-            for j in 1..self.width - 1 {
-                let n = self.count_living(i, j);
+        for i in 0..self.height {
+            for j in 0..self.width {
+                let n = self.count_living(i as i32, j as i32);
                 let cell = &mut self.board[i][j];
                 if cell.state {
                     cell.change_state(n == 2 || n == 3);
@@ -92,14 +94,27 @@ impl Game {
             }
         }
     }
+
+    pub fn get_cell(&self, i: i32, j: i32) -> &Cell {
+        if i >= self.height as i32 || i < 0 || j < 0 || j >= self.width as i32 {
+            return &EMPTY_CELL;
+        }
+        &self.board[i as usize][j as usize]
+    }
+
+    pub fn set_cell(&mut self, i: i32, j: i32, new_state: bool) {
+        if i < self.height as i32 && i >= 0 && j >= 0 && j < self.width as i32 {
+            self.board[i as usize][j as usize].change_state(new_state);
+        }
+    }
 }
 
 impl ToString for Game {
     fn to_string(&self) -> String {
-        let mut str = format!("╭{:─^1$}╮\n", "Game of Life", self.width * 2 - 2);
-        for row in self.board[1..self.height - 1].iter() {
+        let mut str = format!("╭{:─^1$}╮\n", "Game of Life", self.width * 2 + 2);
+        for row in self.board[0..self.height].iter() {
             str.push_str("│ ");
-            for cell in row[1..self.width - 1].iter() {
+            for cell in row[0..self.width].iter() {
                 if cell.state {
                     str.push_str("██");
                 } else {
@@ -108,6 +123,6 @@ impl ToString for Game {
             }
             str.push_str(" │\n");
         }
-        format!("{str}╰{:─^1$}╯\n", "", self.width * 2 - 2)
+        format!("{str}╰{:─^1$}╯\n", "", self.width * 2 + 2)
     }
 }
