@@ -31,16 +31,32 @@ pub fn main() {
     let mut game = Game::new(
         (WIDTH / CELL_SIZE) as usize, (HEIGHT / CELL_SIZE) as usize, true);
 
-
+    let mut runs = true;
     'running: loop {
-        game.next_generation();
+        if runs {
+            game.next_generation();
+        }
         canvas.clear();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} |
+                Event::KeyDown { keycode: Some(Keycode::Q), .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
                 },
+                Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
+                    runs = !runs;
+                }
+                Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
+                    if !runs {
+                        game.next_generation();
+                    }
+                }
+                Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
+                    if !runs {
+                        game.step_back();
+                    }
+                }
                 _ => {}
             }
         }
