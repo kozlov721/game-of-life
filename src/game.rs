@@ -3,7 +3,7 @@ static EMPTY_CELL: Cell = Cell {state: false, history: 0};
 #[derive(Default, Clone, Debug)]
 pub struct Cell {
     state: bool,
-    history: u32,
+    history: usize,
 }
 
 #[derive(Debug)]
@@ -16,19 +16,20 @@ pub struct Game {
 
 impl Cell {
     fn watch_history(&self, n: u32) -> bool {
-        (self.history & (2_u32).pow(n - 1)) != 0
+        (self.history & (2_usize).pow(n - 1)) != 0
     }
 
     fn change_state(&mut self, new_state: bool) {
         self.history <<= 1;
-        self.history += self.state as u32;
+        self.history += self.state as usize;
         self.state = new_state;
     }
 
     fn step_back(&mut self) {
         let past_state = self.history % 2;
         self.history >>= 1;
-        self.history += past_state * 2_u32.pow(32);
+        self.history += past_state * 2_usize.pow(
+            (std::mem::size_of::<usize>() * 8 - 1).try_into().unwrap());
         self.state = past_state != 0;
     }
 
@@ -42,7 +43,6 @@ impl Game {
         let mut game = Self {
             width,
             height,
-            // two more rows and columns as const 0 boundaries
             board: vec![vec![Cell::default(); width]; height],
             alive: 0,
         };
@@ -91,6 +91,14 @@ impl Game {
                 } else {
                     cell.change_state(n == 3);
                 }
+            }
+        }
+    }
+
+    pub fn step_back(&mut self) {
+        for i in 0..self.height {
+            for j in 0..self.width {
+                self.board[i][j].step_back();
             }
         }
     }
