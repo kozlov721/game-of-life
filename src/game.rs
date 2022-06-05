@@ -8,10 +8,9 @@ pub struct Cell {
 
 #[derive(Debug)]
 pub struct Game {
-    width: usize,
-    height: usize,
+    width: u32,
+    height: u32,
     board: Vec<Vec<Cell>>,
-    alive: u32,
 }
 
 impl Cell {
@@ -39,12 +38,12 @@ impl Cell {
 }
 
 impl Game {
-    pub fn new(width: usize, height: usize, random: bool) -> Self {
+    pub fn new(width: u32, height: u32, random: bool) -> Self {
         let mut game = Self {
             width,
             height,
-            board: vec![vec![Cell::default(); width]; height],
-            alive: 0,
+            board: vec![
+                vec![Cell::default(); width as usize];height as usize],
         };
         if random {
             game.randomize();
@@ -53,12 +52,10 @@ impl Game {
     }
 
     pub fn randomize(&mut self) {
-        self.alive = 0;
         for i in 0..self.height {
             for j in 0..self.width {
                 let state = rand::random();
                 self.set_cell(i as i32, j as i32, state);
-                self.alive += state as u32;
             }
         }
     }
@@ -81,23 +78,27 @@ impl Game {
         living
     }
 
-    pub fn next_generation(&mut self) {
-        for i in 0..self.height {
-            for j in 0..self.width {
+    pub fn next_generation(&mut self) -> u32 {
+        let mut alive = 0;
+        for i in 0..self.height as usize {
+            for j in 0..self.width as usize {
                 let n = self.count_living(i as i32, j as i32);
                 let cell = &mut self.board[i][j];
                 if cell.state {
-                    cell.change_state(n == 2 || n == 3);
+                    let new_state = n == 2 || n == 3;
+                    cell.change_state(new_state);
+                    alive += new_state as u32;
                 } else {
                     cell.change_state(n == 3);
                 }
             }
         }
+        alive
     }
 
     pub fn step_back(&mut self) {
-        for i in 0..self.height {
-            for j in 0..self.width {
+        for i in 0..self.height as usize {
+            for j in 0..self.width as usize {
                 self.board[i][j].step_back();
             }
         }
@@ -119,10 +120,10 @@ impl Game {
 
 impl ToString for Game {
     fn to_string(&self) -> String {
-        let mut str = format!("╭{:─^1$}╮\n", "Game of Life", self.width * 2 + 2);
-        for row in self.board[0..self.height].iter() {
+        let mut str = format!("╭{:─^1$}╮\n", "Game of Life", (self.width as usize) * 2 + 2);
+        for row in self.board[0..self.height as usize].iter() {
             str.push_str("│ ");
-            for cell in row[0..self.width].iter() {
+            for cell in row[0..self.width as usize].iter() {
                 if cell.state {
                     str.push_str("██");
                 } else {
@@ -131,6 +132,6 @@ impl ToString for Game {
             }
             str.push_str(" │\n");
         }
-        format!("{str}╰{:─^1$}╯\n", "", self.width * 2 + 2)
+        format!("{str}╰{:─^1$}╯\n", "", (self.width as usize) * 2 + 2)
     }
 }
